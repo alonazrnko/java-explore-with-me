@@ -16,12 +16,12 @@
     <packaging>pom</packaging>
 
     <properties>
-        <java.version>11</java.version> <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>11</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <lombok.version>1.18.32</lombok.version>
     </properties>
 
     <modules>
-        <module>ewm-main-service</module>
-        <module>ewm-stats-service</module>
         <module>ewm-main-service</module>
         <module>ewm-stats-service</module>
     </modules>
