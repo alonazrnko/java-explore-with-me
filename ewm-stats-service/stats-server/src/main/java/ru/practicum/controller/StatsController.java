@@ -26,7 +26,7 @@ public class StatsController {
         log.info("Saving hit for app: {}, uri: {}", dto.getApp(), dto.getUri());
         statsService.saveHit(dto);
     }
-    
+
     @GetMapping("/stats")
     public List<ViewStatsDto> getStats(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
