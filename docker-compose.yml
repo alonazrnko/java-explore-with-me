@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   stats-server:
     build:
@@ -26,5 +24,25 @@ services:
     volumes:
       - stats-db-data:/var/lib/postgresql/data
 
+  ewm-service:
+    image: alpine
+    container_name: ewm-service
+    command: ["sleep", "infinity"]
+    depends_on:
+      - ewm-db
+
+  ewm-db:
+    image: postgres:14-alpine
+    container_name: ewm-db
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_DB=ewm_main
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+    volumes:
+      - ewm-db-data:/var/lib/postgresql/data
+
 volumes:
   stats-db-data:
+  ewm-db-data:
