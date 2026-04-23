@@ -36,7 +36,7 @@ public class StatsServiceImpl implements StatsService {
         if (start != null && end != null && start.isAfter(end)) {
             throw new IllegalArgumentException("Start time must be before end time");
         }
-        
+
         if (uris == null || uris.isEmpty()) {
             if (unique) {
                 return statsRepository.getUniqueStatsAllUris(start, end);
