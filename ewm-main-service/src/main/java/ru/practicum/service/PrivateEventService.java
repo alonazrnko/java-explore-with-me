@@ -3,6 +3,7 @@ package ru.practicum.service;
 import ru.practicum.dto.EventFullDto;
 import ru.practicum.dto.EventShortDto;
 import ru.practicum.dto.NewEventDto;
+import ru.practicum.dto.UpdateEventUserRequest;
 
 import java.util.List;
 
@@ -13,5 +14,5 @@ public interface PrivateEventService {
 
     EventFullDto getEventById(Long userId, Long eventId);
 
-    // TODO: The update method will be added after we create UpdateEventUserRequest DTO
+    EventFullDto updateEvent(Long userId, Long eventId, UpdateEventUserRequest request);
 }
