@@ -13,6 +13,7 @@ import ru.practicum.exception.NotFoundException;
 import ru.practicum.mapper.CategoryMapper;
 import ru.practicum.model.Category;
 import ru.practicum.repository.CategoryRepository;
+import ru.practicum.repository.EventRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,6 +25,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
+    private final EventRepository eventRepository;
 
     @Transactional
     @Override
@@ -58,7 +60,9 @@ public class CategoryServiceImpl implements CategoryService {
             throw new NotFoundException("Category with id=" + catId + " was not found");
         }
 
-        // TODO: Добавить проверку на наличие связанных событий (Event) перед удалением!
+        if (eventRepository.existsByCategoryId(catId)) {
+            throw new ConflictException("The category is not empty and cannot be deleted");
+        }
 
         categoryRepository.deleteById(catId);
     }
