@@ -5,10 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.dto.EventFullDto;
-import ru.practicum.dto.EventShortDto;
-import ru.practicum.dto.NewEventDto;
-import ru.practicum.dto.UpdateEventUserRequest;
+import ru.practicum.dto.*;
 import ru.practicum.service.PrivateEventService;
 
 import javax.validation.Valid;
@@ -54,5 +51,20 @@ public class PrivateEventController {
                                     @Valid @RequestBody UpdateEventUserRequest request) {
         log.info("Private request to update eventId={} by userId={}: {}", eventId, userId, request);
         return eventService.updateEvent(userId, eventId, request);
+    }
+
+    @GetMapping("/{eventId}/requests")
+    public List<ParticipationRequestDto> getEventRequests(@PathVariable Long userId,
+                                                          @PathVariable Long eventId) {
+        log.info("Private request to get requests for eventId={} by initiatorId={}", eventId, userId);
+        return eventService.getEventRequests(userId, eventId);
+    }
+
+    @PatchMapping("/{eventId}/requests")
+    public EventRequestStatusUpdateResult updateRequestStatus(@PathVariable Long userId,
+                                                              @PathVariable Long eventId,
+                                                              @RequestBody EventRequestStatusUpdateRequest request) {
+        log.info("Private request to update request statuses for eventId={} by initiatorId={}: {}", eventId, userId, request);
+        return eventService.updateRequestStatus(userId, eventId, request);
     }
 }

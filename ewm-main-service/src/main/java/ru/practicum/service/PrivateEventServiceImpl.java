@@ -5,24 +5,18 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.dto.EventFullDto;
-import ru.practicum.dto.EventShortDto;
-import ru.practicum.dto.NewEventDto;
-import ru.practicum.dto.UpdateEventUserRequest;
+import ru.practicum.dto.*;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.mapper.EventMapper;
-import ru.practicum.model.Category;
-import ru.practicum.model.Event;
-import ru.practicum.model.Location;
-import ru.practicum.model.User;
+import ru.practicum.mapper.RequestMapper;
+import ru.practicum.model.*;
 import ru.practicum.model.enums.EventState;
-import ru.practicum.repository.CategoryRepository;
-import ru.practicum.repository.EventRepository;
-import ru.practicum.repository.LocationRepository;
-import ru.practicum.repository.UserRepository;
+import ru.practicum.model.enums.RequestStatus;
+import ru.practicum.repository.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,6 +30,8 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     private final CategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
     private final EventMapper eventMapper;
+    private final RequestRepository requestRepository;
+    private final RequestMapper requestMapper;
 
     @Transactional
     @Override
@@ -145,5 +141,73 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
         // TODO: Update views and confirmed requests when StatsClient is integrated
         return eventMapper.toEventFullDto(eventRepository.save(event), 0, 0L);
+    }
+
+    @Override
+    public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException("User with id=" + userId + " was not found");
+        }
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
+
+        if (!event.getInitiator().getId().equals(userId)) {
+            throw new ConflictException("User is not the initiator of the event");
+        }
+
+        return requestRepository.findAllByEventId(eventId).stream()
+                .map(requestMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    @Override
+    public EventRequestStatusUpdateResult updateRequestStatus(Long userId, Long eventId, EventRequestStatusUpdateRequest request) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
+
+        if (!event.getInitiator().getId().equals(userId)) {
+            throw new ConflictException("User is not the initiator of the event");
+        }
+
+        List<ParticipationRequest> requests = requestRepository.findAllById(request.getRequestIds());
+
+        for (ParticipationRequest req : requests) {
+            if (req.getStatus() != RequestStatus.PENDING) {
+                throw new ConflictException("Only pending requests can be updated");
+            }
+        }
+
+        EventRequestStatusUpdateResult result = EventRequestStatusUpdateResult.builder()
+                .confirmedRequests(new ArrayList<>())
+                .rejectedRequests(new ArrayList<>())
+                .build();
+
+        if (request.getStatus() == RequestStatus.REJECTED) {
+            for (ParticipationRequest req : requests) {
+                req.setStatus(RequestStatus.REJECTED);
+                result.getRejectedRequests().add(requestMapper.toDto(requestRepository.save(req)));
+            }
+        } else if (request.getStatus() == RequestStatus.CONFIRMED) {
+            int confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+            int limit = event.getParticipantLimit();
+
+            if (limit != 0 && confirmedCount >= limit) {
+                throw new ConflictException("The participant limit has been reached");
+            }
+
+            for (ParticipationRequest req : requests) {
+                if (limit == 0 || confirmedCount < limit) {
+                    req.setStatus(RequestStatus.CONFIRMED);
+                    result.getConfirmedRequests().add(requestMapper.toDto(requestRepository.save(req)));
+                    confirmedCount++;
+                } else {
+                    req.setStatus(RequestStatus.REJECTED);
+                    result.getRejectedRequests().add(requestMapper.toDto(requestRepository.save(req)));
+                }
+            }
+        }
+
+        return result;
     }
 }
