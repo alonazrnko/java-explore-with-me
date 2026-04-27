@@ -10,7 +10,6 @@ import ru.practicum.dto.EventFullDto;
 import ru.practicum.dto.UpdateEventAdminRequest;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
-import ru.practicum.mapper.EventMapper;
 import ru.practicum.model.Category;
 import ru.practicum.model.Event;
 import ru.practicum.model.Location;
@@ -23,7 +22,6 @@ import javax.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +31,7 @@ public class AdminEventServiceImpl implements AdminEventService {
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
-    private final EventMapper eventMapper;
+    private final EventServiceHelper eventHelper;
 
     @Override
     public List<EventFullDto> getEvents(List<Long> users, List<EventState> states, List<Long> categories,
@@ -42,30 +40,16 @@ public class AdminEventServiceImpl implements AdminEventService {
 
         Specification<Event> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-
-            if (users != null && !users.isEmpty()) {
-                predicates.add(root.get("initiator").get("id").in(users));
-            }
-            if (states != null && !states.isEmpty()) {
-                predicates.add(root.get("state").in(states));
-            }
-            if (categories != null && !categories.isEmpty()) {
-                predicates.add(root.get("category").get("id").in(categories));
-            }
-            if (rangeStart != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("eventDate"), rangeStart));
-            }
-            if (rangeEnd != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("eventDate"), rangeEnd));
-            }
-
+            if (users != null && !users.isEmpty()) predicates.add(root.get("initiator").get("id").in(users));
+            if (states != null && !states.isEmpty()) predicates.add(root.get("state").in(states));
+            if (categories != null && !categories.isEmpty()) predicates.add(root.get("category").get("id").in(categories));
+            if (rangeStart != null) predicates.add(cb.greaterThanOrEqualTo(root.get("eventDate"), rangeStart));
+            if (rangeEnd != null) predicates.add(cb.lessThanOrEqualTo(root.get("eventDate"), rangeEnd));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        return eventRepository.findAll(spec, pageable).stream()
-                // TODO: Replace 0s with actual stats/requests data later
-                .map(event -> eventMapper.toEventFullDto(event, 0, 0L))
-                .collect(Collectors.toList());
+        List<Event> events = eventRepository.findAll(spec, pageable).getContent();
+        return eventHelper.makeFullDtoList(events);
     }
 
     @Transactional
@@ -82,7 +66,7 @@ public class AdminEventServiceImpl implements AdminEventService {
             switch (request.getStateAction()) {
                 case PUBLISH_EVENT:
                     if (event.getState() != EventState.PENDING) {
-                        throw new ConflictException("Cannot publish the event because it's not in the right state");
+                        throw new ConflictException("Cannot publish the event because it's not in the PENDING state");
                     }
                     event.setState(EventState.PUBLISHED);
                     event.setPublishedOn(LocalDateTime.now());
@@ -96,7 +80,11 @@ public class AdminEventServiceImpl implements AdminEventService {
             }
         }
 
-        // Apply partial updates
+        applyPatch(event, request);
+        return eventHelper.makeFullDto(eventRepository.save(event));
+    }
+
+    private void applyPatch(Event event, UpdateEventAdminRequest request) {
         if (request.getAnnotation() != null) event.setAnnotation(request.getAnnotation());
         if (request.getDescription() != null) event.setDescription(request.getDescription());
         if (request.getTitle() != null) event.setTitle(request.getTitle());
@@ -105,7 +93,7 @@ public class AdminEventServiceImpl implements AdminEventService {
         if (request.getRequestModeration() != null) event.setRequestModeration(request.getRequestModeration());
         if (request.getCategory() != null) {
             Category category = categoryRepository.findById(request.getCategory())
-                    .orElseThrow(() -> new NotFoundException("Category with id=" + request.getCategory() + " was not found"));
+                    .orElseThrow(() -> new NotFoundException("Category was not found"));
             event.setCategory(category);
         }
         if (request.getLocation() != null) {
@@ -114,7 +102,5 @@ public class AdminEventServiceImpl implements AdminEventService {
             location.setLon(request.getLocation().getLon());
             locationRepository.save(location);
         }
-
-        return eventMapper.toEventFullDto(eventRepository.save(event), 0, 0L);
     }
 }

@@ -11,7 +11,6 @@ import ru.practicum.dto.NewCompilationDto;
 import ru.practicum.dto.UpdateCompilationRequest;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.mapper.CompilationMapper;
-import ru.practicum.mapper.EventMapper;
 import ru.practicum.model.Compilation;
 import ru.practicum.model.Event;
 import ru.practicum.repository.CompilationRepository;
@@ -30,7 +29,7 @@ public class CompilationServiceImpl implements CompilationService {
     private final CompilationRepository compilationRepository;
     private final EventRepository eventRepository;
     private final CompilationMapper compilationMapper;
-    private final EventMapper eventMapper;
+    private final EventServiceHelper eventHelper;
 
     @Transactional
     @Override
@@ -103,10 +102,7 @@ public class CompilationServiceImpl implements CompilationService {
     }
 
     private CompilationDto mapToDto(Compilation compilation) {
-        List<EventShortDto> eventDtos = compilation.getEvents().stream()
-                // TODO: Заменить 0 и 0L на реальные данные
-                .map(event -> eventMapper.toEventShortDto(event, 0, 0L))
-                .collect(Collectors.toList());
+        List<EventShortDto> eventDtos = eventHelper.makeShortDtoList(compilation.getEvents());
         return compilationMapper.toDto(compilation, eventDtos);
     }
 }
