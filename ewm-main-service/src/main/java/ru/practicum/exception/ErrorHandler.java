@@ -63,4 +63,28 @@ public class ErrorHandler {
                 .timestamp(LocalDateTime.now().format(FORMATTER))
                 .build();
     }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleCustomValidationException(final ValidationException e) {
+        log.error("400 Bad Request (Validation): {}", e.getMessage(), e);
+        return ApiError.builder()
+                .status(HttpStatus.BAD_REQUEST.name())
+                .reason("Incorrectly made request.")
+                .message(e.getMessage())
+                .timestamp(LocalDateTime.now().format(FORMATTER))
+                .build();
+    }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleMissingRequestParameterException(final org.springframework.web.bind.MissingServletRequestParameterException e) {
+        log.error("400 Bad Request (Missing Parameter): {}", e.getMessage(), e);
+        return ApiError.builder()
+                .status(HttpStatus.BAD_REQUEST.name())
+                .reason("Incorrectly made request.")
+                .message(e.getMessage())
+                .timestamp(LocalDateTime.now().format(FORMATTER))
+                .build();
+    }
 }
