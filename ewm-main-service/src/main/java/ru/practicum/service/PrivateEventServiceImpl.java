@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.*;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
+import ru.practicum.exception.ValidationException;
 import ru.practicum.mapper.EventMapper;
 import ru.practicum.mapper.RequestMapper;
 import ru.practicum.model.*;
@@ -38,7 +39,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     @Override
     public EventFullDto createEvent(Long userId, NewEventDto request) {
         if (request.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new ConflictException("Event date must be at least 2 hours in the future");
+            throw new ValidationException("Event date must be at least 2 hours in the future");
         }
         User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
         Category category = categoryRepository.findById(request.getCategory()).orElseThrow(() -> new NotFoundException("Category not found"));
@@ -73,6 +74,22 @@ public class PrivateEventServiceImpl implements PrivateEventService {
             throw new ConflictException("Only pending or canceled events can be changed");
         }
 
+        if (request.getEventDate() != null && request.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+            throw new ValidationException("Event date must be at least 2 hours in the future");
+        }
+
+        if (request.getStateAction() != null) {
+            switch (request.getStateAction()) {
+                case SEND_TO_REVIEW:
+                    event.setState(EventState.PENDING);
+                    break;
+                case CANCEL_REVIEW:
+                    event.setState(EventState.CANCELED);
+                    break;
+            }
+        }
+
+        applyPatch(event, request);
         return eventHelper.makeFullDto(eventRepository.save(event));
     }
 
@@ -119,5 +136,42 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         }
         requestRepository.saveAll(requests);
         return result;
+    }
+
+    private void applyPatch(Event event, UpdateEventUserRequest request) {
+        if (request.getAnnotation() != null) {
+            event.setAnnotation(request.getAnnotation());
+        }
+        if (request.getCategory() != null) {
+            Category category = categoryRepository.findById(request.getCategory())
+                    .orElseThrow(() -> new NotFoundException("Category not found"));
+            event.setCategory(category);
+        }
+        if (request.getDescription() != null) {
+            event.setDescription(request.getDescription());
+        }
+        if (request.getEventDate() != null) {
+            event.setEventDate(request.getEventDate());
+        }
+        if (request.getLocation() != null) {
+            Location location = new Location();
+            location.setLat(request.getLocation().getLat());
+            location.setLon(request.getLocation().getLon());
+
+            Location savedLocation = locationRepository.save(location);
+            event.setLocation(savedLocation);
+        }
+        if (request.getPaid() != null) {
+            event.setPaid(request.getPaid());
+        }
+        if (request.getParticipantLimit() != null) {
+            event.setParticipantLimit(request.getParticipantLimit());
+        }
+        if (request.getRequestModeration() != null) {
+            event.setRequestModeration(request.getRequestModeration());
+        }
+        if (request.getTitle() != null) {
+            event.setTitle(request.getTitle());
+        }
     }
 }

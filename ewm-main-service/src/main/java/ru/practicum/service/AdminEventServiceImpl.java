@@ -10,6 +10,7 @@ import ru.practicum.dto.EventFullDto;
 import ru.practicum.dto.UpdateEventAdminRequest;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
+import ru.practicum.exception.ValidationException;
 import ru.practicum.model.Category;
 import ru.practicum.model.Event;
 import ru.practicum.model.Location;
@@ -59,7 +60,7 @@ public class AdminEventServiceImpl implements AdminEventService {
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
 
         if (request.getEventDate() != null && request.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
-            throw new ConflictException("Event date must be at least 1 hour in the future for admin update");
+            throw new ValidationException("Event date must be at least 1 hour in the future for admin update");
         }
 
         if (request.getStateAction() != null) {
@@ -75,7 +76,7 @@ public class AdminEventServiceImpl implements AdminEventService {
                     if (event.getState() == EventState.PUBLISHED) {
                         throw new ConflictException("Cannot reject the event because it's already published");
                     }
-                    event.setState(EventState.CANCELED);
+                    event.setState(EventState.CANCELED); // In some versions of Spec it might be REJECTED, but usually CANCELED works
                     break;
             }
         }
