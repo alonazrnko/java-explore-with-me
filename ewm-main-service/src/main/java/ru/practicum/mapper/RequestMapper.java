@@ -8,11 +8,15 @@ import ru.practicum.model.ParticipationRequest;
 public class RequestMapper {
 
     public ParticipationRequestDto toDto(ParticipationRequest request) {
+        if (request == null) {
+            return null;
+        }
+
         return ParticipationRequestDto.builder()
                 .id(request.getId())
                 .created(request.getCreated())
-                .event(request.getEvent().getId())
-                .requester(request.getRequester().getId())
+                .event(request.getEvent() != null ? request.getEvent().getId() : null)
+                .requester(request.getRequester() != null ? request.getRequester().getId() : null)
                 .status(request.getStatus())
                 .build();
     }
