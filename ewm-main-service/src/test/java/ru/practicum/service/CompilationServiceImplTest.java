@@ -17,7 +17,6 @@ import ru.practicum.repository.CompilationRepository;
 import ru.practicum.repository.EventRepository;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 

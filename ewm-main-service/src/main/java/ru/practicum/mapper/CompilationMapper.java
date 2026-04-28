@@ -19,7 +19,7 @@ public class CompilationMapper {
                 .id(compilation.getId())
                 .pinned(compilation.getPinned())
                 .title(compilation.getTitle())
-                .events(events) 
+                .events(events)
                 .build();
     }
 }
