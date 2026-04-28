@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
 import ru.practicum.dto.*;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.ValidationException;
@@ -140,5 +141,75 @@ class PrivateEventServiceImplTest {
         privateService.updateEvent(userId, eventId, request);
 
         assertThat(event.getState()).isEqualTo(EventState.PENDING);
+    }
+
+    @Test
+    void updateEvent_shouldApplyFullPatch() {
+        Long userId = 1L;
+        Long eventId = 10L;
+        Event event = new Event();
+        event.setState(EventState.PENDING);
+
+        UpdateEventUserRequest request = UpdateEventUserRequest.builder()
+                .annotation("New Annotation updated")
+                .category(2L)
+                .description("New Description updated")
+                .eventDate(LocalDateTime.now().plusDays(5))
+                .location(new LocationDto(10.0f, 20.0f))
+                .paid(true)
+                .participantLimit(50)
+                .requestModeration(false)
+                .title("New Title")
+                .stateAction(StateAction.SEND_TO_REVIEW)
+                .build();
+
+        when(eventRepository.findByIdAndInitiatorId(eventId, userId)).thenReturn(Optional.of(event));
+        when(categoryRepository.findById(2L)).thenReturn(Optional.of(new Category(2L, "New Cat")));
+        when(locationRepository.save(any())).thenReturn(new Location(1L, 10.0f, 20.0f));
+        when(eventRepository.save(any())).thenAnswer(i -> i.getArguments()[0]);
+        when(eventHelper.makeFullDto(any())).thenReturn(new EventFullDto());
+
+        privateService.updateEvent(userId, eventId, request);
+
+        assertThat(event.getTitle()).isEqualTo("New Title");
+        assertThat(event.getAnnotation()).isEqualTo("New Annotation updated");
+        assertThat(event.getParticipantLimit()).isEqualTo(50);
+        assertThat(event.getPaid()).isTrue();
+        verify(eventRepository).save(event);
+    }
+
+    @Test
+    void updateRequestStatus_shouldRejectAll_whenStatusIsRejected() {
+        Long userId = 1L;
+        Long eventId = 1L;
+        Event event = new Event();
+        event.setInitiator(new User(userId, null, null));
+
+        ParticipationRequest req = ParticipationRequest.builder()
+                .id(1L).status(RequestStatus.PENDING).build();
+
+        EventRequestStatusUpdateRequest updateRequest = new EventRequestStatusUpdateRequest();
+        updateRequest.setRequestIds(List.of(1L));
+        updateRequest.setStatus(RequestStatus.REJECTED);
+
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
+        when(requestRepository.findAllById(any())).thenReturn(List.of(req));
+        when(requestMapper.toDto(any())).thenReturn(new ParticipationRequestDto());
+
+        EventRequestStatusUpdateResult result = privateService.updateRequestStatus(userId, eventId, updateRequest);
+
+        assertThat(result.getRejectedRequests()).hasSize(1);
+        assertThat(req.getStatus()).isEqualTo(RequestStatus.REJECTED);
+        verify(requestRepository).saveAll(any());
+    }
+
+    @Test
+    void getEvents_shouldReturnList() {
+        when(eventRepository.findAllByInitiatorId(anyLong(), any())).thenReturn(new PageImpl<>(List.of(new Event())));
+        when(eventHelper.makeShortDtoList(any())).thenReturn(List.of(new EventShortDto()));
+
+        List<EventShortDto> result = privateService.getEvents(1L, 0, 10);
+
+        assertThat(result).hasSize(1);
     }
 }
