@@ -18,8 +18,8 @@ import ru.practicum.model.Event;
 import ru.practicum.model.enums.EventSort;
 import ru.practicum.model.enums.EventState;
 import ru.practicum.repository.EventRepository;
+import ru.practicum.repository.EventSpecifications;
 
-import javax.persistence.criteria.Predicate;
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -51,7 +51,7 @@ public class PublicEventServiceImpl implements PublicEventService {
                 ? PageRequest.of(from / size, size, Sort.by("eventDate").ascending())
                 : PageRequest.of(from / size, size);
 
-        Specification<Event> spec = buildSpecification(text, categories, paid, rangeStart, rangeEnd);
+        Specification<Event> spec = EventSpecifications.publicFilter(text, categories, paid, rangeStart, rangeEnd);
         List<Event> events = eventRepository.findAll(spec, pageable).getContent();
 
         saveEndpointHit(request);
@@ -107,33 +107,5 @@ public class PublicEventServiceImpl implements PublicEventService {
         } catch (Exception e) {
             log.error("Failed to save endpoint hit: {}", e.getMessage());
         }
-    }
-
-    private Specification<Event> buildSpecification(String text, List<Long> categories, Boolean paid,
-                                                    LocalDateTime rangeStart, LocalDateTime rangeEnd) {
-        return (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("state"), EventState.PUBLISHED));
-
-            if (text != null && !text.isBlank()) {
-                String likeText = "%" + text.toLowerCase() + "%";
-                predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("annotation")), likeText),
-                        cb.like(cb.lower(root.get("description")), likeText)
-                ));
-            }
-            if (categories != null && !categories.isEmpty()) {
-                predicates.add(root.get("category").get("id").in(categories));
-            }
-            if (paid != null) {
-                predicates.add(cb.equal(root.get("paid"), paid));
-            }
-            if (rangeStart != null && rangeEnd != null) {
-                predicates.add(cb.between(root.get("eventDate"), rangeStart, rangeEnd));
-            } else {
-                predicates.add(cb.greaterThan(root.get("eventDate"), LocalDateTime.now()));
-            }
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
     }
 }

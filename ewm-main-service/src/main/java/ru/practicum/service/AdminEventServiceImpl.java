@@ -18,10 +18,9 @@ import ru.practicum.model.enums.EventState;
 import ru.practicum.repository.CategoryRepository;
 import ru.practicum.repository.EventRepository;
 import ru.practicum.repository.LocationRepository;
+import ru.practicum.repository.EventSpecifications;
 
-import javax.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -39,15 +38,7 @@ public class AdminEventServiceImpl implements AdminEventService {
                                         LocalDateTime rangeStart, LocalDateTime rangeEnd, int from, int size) {
         Pageable pageable = PageRequest.of(from / size, size);
 
-        Specification<Event> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (users != null && !users.isEmpty()) predicates.add(root.get("initiator").get("id").in(users));
-            if (states != null && !states.isEmpty()) predicates.add(root.get("state").in(states));
-            if (categories != null && !categories.isEmpty()) predicates.add(root.get("category").get("id").in(categories));
-            if (rangeStart != null) predicates.add(cb.greaterThanOrEqualTo(root.get("eventDate"), rangeStart));
-            if (rangeEnd != null) predicates.add(cb.lessThanOrEqualTo(root.get("eventDate"), rangeEnd));
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+        Specification<Event> spec = EventSpecifications.adminFilter(users, states, categories, rangeStart, rangeEnd);
 
         List<Event> events = eventRepository.findAll(spec, pageable).getContent();
         return eventHelper.makeFullDtoList(events);
@@ -76,7 +67,7 @@ public class AdminEventServiceImpl implements AdminEventService {
                     if (event.getState() == EventState.PUBLISHED) {
                         throw new ConflictException("Cannot reject the event because it's already published");
                     }
-                    event.setState(EventState.CANCELED); // In some versions of Spec it might be REJECTED, but usually CANCELED works
+                    event.setState(EventState.CANCELED);
                     break;
             }
         }
@@ -92,13 +83,19 @@ public class AdminEventServiceImpl implements AdminEventService {
         if (request.getPaid() != null) event.setPaid(request.getPaid());
         if (request.getParticipantLimit() != null) event.setParticipantLimit(request.getParticipantLimit());
         if (request.getRequestModeration() != null) event.setRequestModeration(request.getRequestModeration());
+
         if (request.getCategory() != null) {
             Category category = categoryRepository.findById(request.getCategory())
                     .orElseThrow(() -> new NotFoundException("Category was not found"));
             event.setCategory(category);
         }
+
         if (request.getLocation() != null) {
             Location location = event.getLocation();
+            if (location == null) {
+                location = new Location();
+                event.setLocation(location);
+            }
             location.setLat(request.getLocation().getLat());
             location.setLon(request.getLocation().getLon());
             locationRepository.save(location);
