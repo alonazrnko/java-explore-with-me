@@ -75,13 +75,15 @@ class UserServiceImplTest {
         User user = new User(1L, "Name", "user@test.com");
 
         when(userMapper.toUser(request)).thenReturn(user);
-        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        when(userRepository.saveAndFlush(any(User.class))).thenReturn(user);
         when(userMapper.toUserDto(user)).thenReturn(new UserDto(1L, "Name", "user@test.com"));
 
         UserDto result = userService.createUser(request);
 
         assertThat(result).isNotNull();
         assertThat(result.getEmail()).isEqualTo("user@test.com");
-        verify(userRepository).save(any());
+
+        verify(userRepository).saveAndFlush(any());
     }
 }

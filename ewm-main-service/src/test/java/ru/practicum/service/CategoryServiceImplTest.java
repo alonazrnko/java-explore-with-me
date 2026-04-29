@@ -40,7 +40,7 @@ class CategoryServiceImplTest {
     void createCategory_shouldThrowConflict_whenNameExists() {
         NewCategoryDto dto = new NewCategoryDto("Rock");
         when(categoryMapper.toCategory(any())).thenReturn(new Category());
-        when(categoryRepository.save(any())).thenThrow(DataIntegrityViolationException.class);
+        when(categoryRepository.saveAndFlush(any())).thenThrow(DataIntegrityViolationException.class);
 
         assertThatThrownBy(() -> categoryService.createCategory(dto))
                 .isInstanceOf(ConflictException.class)
@@ -54,13 +54,13 @@ class CategoryServiceImplTest {
         CategoryDto request = new CategoryDto(catId, "New");
 
         when(categoryRepository.findById(catId)).thenReturn(Optional.of(category));
-        when(categoryRepository.save(any())).thenReturn(category);
+        when(categoryRepository.saveAndFlush(any())).thenReturn(category);
         when(categoryMapper.toCategoryDto(any())).thenReturn(request);
 
         CategoryDto result = categoryService.updateCategory(catId, request);
 
         assertThat(result.getName()).isEqualTo("New");
-        verify(categoryRepository).save(category);
+        verify(categoryRepository).saveAndFlush(category);
     }
 
     @Test
