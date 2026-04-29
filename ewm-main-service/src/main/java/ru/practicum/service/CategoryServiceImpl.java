@@ -31,7 +31,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryDto createCategory(NewCategoryDto request) {
         try {
-            Category category = categoryRepository.save(categoryMapper.toCategory(request));
+            Category category = categoryRepository.saveAndFlush(categoryMapper.toCategory(request));
             return categoryMapper.toCategoryDto(category);
         } catch (DataIntegrityViolationException e) {
             throw new ConflictException("Category name '" + request.getName() + "' is already in use");
@@ -47,7 +47,7 @@ public class CategoryServiceImpl implements CategoryService {
         category.setName(request.getName());
 
         try {
-            return categoryMapper.toCategoryDto(categoryRepository.save(category));
+            return categoryMapper.toCategoryDto(categoryRepository.saveAndFlush(category));
         } catch (DataIntegrityViolationException e) {
             throw new ConflictException("Category name '" + request.getName() + "' is already in use");
         }
