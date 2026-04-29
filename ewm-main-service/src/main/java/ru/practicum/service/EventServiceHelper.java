@@ -63,7 +63,7 @@ public class EventServiceHelper {
                 .map(Event::getId)
                 .collect(Collectors.toList());
 
-        return requestRepository.countByEventIdInAndStatus(eventIds, RequestStatus.CONFIRMED)
+        return requestRepository.findRequestCountsByEventIds(eventIds, RequestStatus.CONFIRMED)
                 .stream()
                 .collect(Collectors.toMap(
                         RequestCount::getEventId,
