@@ -29,7 +29,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDto createUser(NewUserRequest request) {
         try {
-            User user = userRepository.save(userMapper.toUser(request));
+            User user = userRepository.saveAndFlush(userMapper.toUser(request));
             return userMapper.toUserDto(user);
         } catch (DataIntegrityViolationException e) {
             throw new ConflictException("Email " + request.getEmail() + " is already in use");
