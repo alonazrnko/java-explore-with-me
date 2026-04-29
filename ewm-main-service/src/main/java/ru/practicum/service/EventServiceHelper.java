@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import ru.practicum.client.StatsClient;
 import ru.practicum.dto.EventFullDto;
 import ru.practicum.dto.EventShortDto;
+import ru.practicum.dto.RequestCount;
 import ru.practicum.dto.ViewStatsDto;
 import ru.practicum.mapper.EventMapper;
 import ru.practicum.model.Event;
@@ -29,9 +30,11 @@ public class EventServiceHelper {
         if (events.isEmpty()) return Collections.emptyList();
 
         Map<Long, Long> views = getViews(events);
+        Map<Long, Integer> confirmedRequests = getConfirmedRequests(events);
+
         return events.stream()
                 .map(event -> eventMapper.toEventShortDto(event,
-                        requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED),
+                        confirmedRequests.getOrDefault(event.getId(), 0),
                         views.getOrDefault(event.getId(), 0L)))
                 .collect(Collectors.toList());
     }
@@ -40,6 +43,32 @@ public class EventServiceHelper {
         Map<Long, Long> views = getViews(List.of(event));
         int confirmedRequests = requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
         return eventMapper.toEventFullDto(event, confirmedRequests, views.getOrDefault(event.getId(), 0L));
+    }
+
+    public List<EventFullDto> makeFullDtoList(Collection<Event> events) {
+        if (events.isEmpty()) return Collections.emptyList();
+
+        Map<Long, Long> views = getViews(events);
+        Map<Long, Integer> confirmedRequests = getConfirmedRequests(events);
+
+        return events.stream()
+                .map(event -> eventMapper.toEventFullDto(event,
+                        confirmedRequests.getOrDefault(event.getId(), 0),
+                        views.getOrDefault(event.getId(), 0L)))
+                .collect(Collectors.toList());
+    }
+
+    private Map<Long, Integer> getConfirmedRequests(Collection<Event> events) {
+        List<Long> eventIds = events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toList());
+
+        return requestRepository.countByEventIdInAndStatus(eventIds, RequestStatus.CONFIRMED)
+                .stream()
+                .collect(Collectors.toMap(
+                        RequestCount::getEventId,
+                        rc -> rc.getCount().intValue()
+                ));
     }
 
     private Map<Long, Long> getViews(Collection<Event> events) {
@@ -61,16 +90,5 @@ public class EventServiceHelper {
             log.error("Error fetching statistics from stats-service: {}", e.getMessage());
         }
         return Collections.emptyMap();
-    }
-
-    public List<EventFullDto> makeFullDtoList(Collection<Event> events) {
-        if (events.isEmpty()) return Collections.emptyList();
-
-        Map<Long, Long> views = getViews(events);
-        return events.stream()
-                .map(event -> eventMapper.toEventFullDto(event,
-                        requestRepository.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED),
-                        views.getOrDefault(event.getId(), 0L)))
-                .collect(Collectors.toList());
     }
 }
