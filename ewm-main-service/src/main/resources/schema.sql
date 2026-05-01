@@ -70,6 +70,10 @@ CREATE TABLE IF NOT EXISTS comments (
     text VARCHAR(2000) NOT NULL,
     event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     author_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     state VARCHAR(50) NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_comments_event_published
+ON comments (event_id, created_at DESC)
+WHERE state = 'PUBLISHED';
