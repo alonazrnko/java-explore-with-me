@@ -75,5 +75,4 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_comments_event_published
-ON comments (event_id, created_at DESC)
-WHERE state = 'PUBLISHED';
+ON comments (event_id, created_at DESC);
